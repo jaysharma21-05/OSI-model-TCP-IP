@@ -1,0 +1,289 @@
+# Recursive DNS, Authoritative DNS, DHCP DORA, ARP, NAT/SNAT/DNAT/PAT (Hinglish Notes)
+
+Recursive aur Authoritative DNS, DHCP DORA, ARP, aur NAT ke notes ka content jaisa ka taisa rakha gaya hai, sirf **formatting** aur **clarity** improve ki gayi hai.
+
+---
+
+## Recursive vs Authoritative DNS
+
+Recursive aur Authoritative DNS ka farak samajhne ke liye sabse best analogy hai **Library** ki.[web:6][web:2]
+
+Source:  
+- https://www.nslookup.io/learning/recursive-vs-authoritative-dns/  
+- https://www.digicert.com/faq/dns/recursive-and-authoritative-dns-differences  
+- https://www.cloudflare.com/learning/dns/dns-server-types/  
+- https://www.dnsfilter.com/blog/authoritative-vs-recursive-dns  
+- https://umbrella.cisco.com/blog/what-is-the-difference-between-authoritative-and-recursive-dns-nameservers  
+- https://www.bigrock.in/blog/how-tos/learning-and-resources/recursive-and-authoritative-dns-differences  
+
+### 1. Recursive Resolver – “The Helpful Librarian”
+
+Ye wo librarian hai jise tum jaakar bolte ho:
+
+> “Bhaiya, mujhe ‘Networking Basics’ ki kitab chahiye.”
+
+- **Kaam**: Librarian khud jaakar alag‑alag shelves check karta hai, doosre floor par jaata hai, aur mehnat karke kitab dhoondh kar tumhare haath mein deta hai.[web:6]  
+- **Smart Work (Caching)**:  
+  - Agar agla banda wahi kitab maange, toh librarian ko dobara dhoondhne ki zaroorat nahi padti.  
+  - Usne wo kitab apne paas counter par hi rakhi hoti hai (**Cache**).[web:2][web:12]  
+- **Location / Example**:  
+  - Ye aksar tumhara **ISP** (Airtel/Jio) ka resolver hota hai ya public resolver jaise **Google 8.8.8.8**.[web:6]
+
+### 2. Authoritative Server – “The Original Book Shelf”
+
+Ye library ka wo khaas **shelf/godown (warehouse)** hai jahan woh kitab asliyat mein rakhi gayi hai.[web:4][web:5]
+
+- **Kaam**: Iska kaam dhoondhna nahi hai.  
+  - Iska kaam hai **sahi jaankari store karna**.  
+  - Jab librarian (recursive) iske paas aata hai, toh ye sirf apne area/zone ki jaankari deta hai.[web:4][web:5]  
+- **Malik (Owner)**:  
+  - Agar tum `google.com` ke authoritative server se `facebook.com` ke baare mein poochoge, toh wo mana kar dega.  
+  - Ye sirf apne **zone** ka malik hai (e.g. sirf `google.com`).[web:6]  
+- **Records**:  
+  - Iske paas asli **A, AAAA, MX, CNAME** etc. records hote hain.[web:4]
+
+### DNS Query Flow – Ek Query Kaise Chalti Hai?
+
+User: “`google.com` ka IP kya hai?” (Browser → Recursive Resolver).[web:15]
+
+1. **Recursive Resolver**:  
+   - Pehle apna **cache** check karta hai. Agar nahi mila toh aage jaata hai.[web:2][web:6]  
+2. **Root Server** – “The Chief Librarian”  
+   - Root bolta hai: “`.com` ki jaankari TLD server ke paas hai, wahan jao.”[web:15]  
+3. **TLD (.com) Server**  
+   - Bolta hai: “`google.com` ki asli file Authoritative server ke paas hai.”[web:15]  
+4. **Authoritative Server**  
+   - Bolta hai: “Ye lo asli IP: 142.250.x.x!”[web:4]  
+5. **Recursive Resolver**  
+   - Ye IP browser ko deta hai aur **cache** mein store kar leta hai.[web:6]
+
+### Key Difference (Interview Point)
+
+| Feature        | Recursive Resolver (Client side)                           | Authoritative Server (Server side)                             |
+|---------------|------------------------------------------------------------|----------------------------------------------------------------|
+| Role          | Aapke liye answer dhoondhta hai (**The Seeker**)           | Answer store karta hai (**The Source**)                        |
+| Effort        | Multiple servers ko query karta hai (**recursion**)        | Sirf apne **domain/zone** ka jawab deta hai                    |
+| Data Source   | Cache + authoritative servers se gathered info             | Asli DNS records (A, MX, NS, TXT, etc.)                        |
+| Who uses it?  | Users/Clients (browsers, OS resolvers)                     | Recursive resolvers / other DNS infrastructure                 |
+| Scope         | Koi bhi domain ke liye query kar sakta hai                 | Sirf jiske liye authoritative hai (apna zone)                  |[web:6][web:9]
+
+---
+
+## DHCP – DORA Process
+
+DHCP ka DORA process networking ka sabse basic aur important concept hai. Isse ek dum desi style mein samajhte hain.[web:13][web:16]
+
+Source:  
+- https://www.geeksforgeeks.org/computer-networks/how-dora-works/  
+- https://www.geeksforgeeks.org/computer-networks/dynamic-host-configuration-protocol-dhcp/  
+- https://networklessons.com/ip-services/introduction-to-dhcp  
+
+### DHCP – The “Digital Rental Agency”
+
+Socho tum ek naye shehar gaye aur tumhe rehne ke liye kiraye par ghar chahiye. Agar DHCP nahi hota, toh tumhe har ghar ka darwaza khatkhata kar khud puchna padta:
+
+> “Kya main yahan reh sakta hoon?”
+
+DHCP is jhanjhat ko khatam karta hai – woh tumhe **automatically IP, subnet mask, gateway, DNS** de deta hai.[web:13]
+
+### DORA Process: Ek Kahani
+
+**DORA = Discover → Offer → Request → Acknowledge**[web:13][web:16]
+
+#### 1. Discover (Client ka chillaana)
+
+- **Analogy**:  
+  Tum ek anjaan colony ke beech mein khade hokar chillate ho:  
+  > “Mujhe kiraye par kamra chahiye, kya yahan koi Rental Agent (DHCP Server) hai?”  
+- **Technical**:  
+  - Client ke paas abhi **apna IP nahi** hota.  
+  - Wo `0.0.0.0` se `255.255.255.255` (broadcast) par DHCPDISCOVER message bhejta hai.[web:13]
+
+#### 2. Offer (Option milna)
+
+- **Analogy**:  
+  Agent (DHCP Server) balcony se chillata hai:  
+  > “Haan, mere paas Room No. 101 khali hai, dekhoge?”  
+- **Technical**:  
+  - Server DHCPOFFER bhejta hai jisme: **available IP address, subnet mask, gateway, lease time** etc. hote hain.  
+  - Abhi tak ye IP final tumhara nahi hai.[web:13]
+
+#### 3. Request (Haan bolna)
+
+- **Analogy**:  
+  Tum sabko sunate hue bolte ho:  
+  > “Theek hai! Mujhe Agent Sharma ka Room No. 101 pasand hai, please mere liye lock kar do.”  
+- **Technical**:  
+  - Client DHCPREQUEST broadcast karta hai.  
+  - Ye batata hai ki usne **kis server ka offer accept** kar liya.[web:13]
+
+#### 4. Acknowledge (Chabi milna)
+
+- **Analogy**:  
+  Agent Sharma bolta hai:  
+  > “Done! Ye lo chabi aur ghar ke rules (DNS settings). Ab tum yahan reh sakte ho.”  
+- **Technical**:  
+  - Server DHCPACK bhejta hai.  
+  - Ab client ko uska IP **officially assign** ho gaya.[web:16]
+
+---
+
+## ARP – IP to MAC Mapping
+
+ARP ko samajhne ke liye bas ek simple funda yaad rakho:
+
+> IP address = "Naam",  
+> MAC address = "Physical Location".[web:7]
+
+Source:  
+- https://www.geeksforgeeks.org/ethical-hacking/what-is-arp-spoofing-attack/  
+- https://www.imperva.com/learn/application-security/arp-spoofing/  
+- https://www.sentinelone.com/cybersecurity-101/threat-intelligence/arp-spoofing/  
+
+### ARP: The “Classroom Roll Call” Analogy
+
+Imagine karo tum ek badi class (Local Network) mein baithe ho.  
+Teacher (Sender) ke paas ek assignment hai jo use Roll No. 10 (Destination IP) ko dena hai.  
+Lekin teacher ko ye nahi pata ki Roll No. 10 class mein kahan baitha hai (MAC address).[web:7]
+
+### ARP Working Flow
+
+#### 1. Cache Check (Diary dekhna)
+
+- Teacher pehle apni diary check karta hai ki kya usne pehle kabhi Roll No. 10 ka bench number likha tha.  
+- Agar entry mil jaati hai toh bina kuch pooche seedha assignment de deta hai (ARP cache hit).[web:7]
+
+#### 2. ARP Request (Chillaana / Broadcast)
+
+Agar diary mein entry nahi hai:
+
+- Teacher puri class mein zor se chilayega:  
+  > “Roll No. 10 kaun hai? Apna bench number (MAC) batao!”  
+- **Technical**:  
+  - Ye message **broadcast** hota hai (Layer 2 address `FF:FF:FF:FF:FF:FF`).  
+  - Matlab class ka har bacha ise sunega.[web:7]
+
+#### 3. ARP Reply (Haath uthana / Unicast)
+
+- Roll No. 10 jiska IP match karta hai, haath uthayega:  
+  > “Sir, main yahan Bench No. 5 (MAC Address) par hoon.”  
+- Baaki bache is baat ko ignore karte hain.  
+- **Technical**:  
+  - Ye reply **unicast** hota hai, sirf teacher (sender) ko jata hai.[web:7]
+
+#### 4. Cache Update (Diary entry)
+
+- Teacher future ke liye diary mein likh leta hai:  
+  > Roll No. 10 = Bench No. 5  
+- Ye hi ARP **cache table** update hai.[web:7]
+
+### Security Angle – ARP Spoofing (The “Backbench” Attacker)
+
+Socho jab teacher ne chilaya “Roll No. 10 kaun hai?”, tab ek badmaash bacha (Attacker) Roll No. 10 se pehle hi chilane lagta hai:
+
+> “Sir, main hi Roll No. 10 hoon aur main Bench No. 99 (Attacker ka MAC) par baitha hoon!”[web:7][web:8]
+
+- Teacher ko lagta hai ye hi asli banda hai.  
+- Sara sensitive data (assignments) attacker ko milne lagta hai.  
+- Isse hi **Man‑in‑the‑Middle (MITM) attack** ya **ARP spoofing** kehte hain.[web:7][web:8]
+
+### Key Interview Points (ARP)
+
+- **ARP Layer 2 par kaam karta hai ya Layer 3 par?**  
+  - Ye Layer 2 (Data Link) aur Layer 3 (Network) ke beech ka **bridge** hai, par ise aksar Layer 2 protocol maana jata hai kyunki final delivery MAC par hoti hai.[web:7]  
+- **Gratuitous ARP kya hai?**  
+  - Jab koi device network join karte hi bina kisi ke pooche apna IP–MAC announce kar deta hai:  
+    > “Main Roll No. 10 hoon aur main yahan hoon!”  
+  - Ye often duplicate IP detect karne ya ARP cache refresh karne ke liye use hota hai.[web:7]
+
+---
+
+## NAT, SNAT, DNAT, PAT
+
+NAT ko samajhne ke liye **society gate analogy** bahut useful hai.[web:7]
+
+Source:  
+- https://www.thenetworkdna.com/2023/11/decoding-snat-and-dnat-unveiling.html  
+- https://www.alibabacloud.com/blog/snat-vs--dnat-and-some-tips-for-the-acpace-cloud-computing-exam_598920  
+
+### NAT: The “Society Gatekeeper” Analogy
+
+Imagine karo tum ek badi society (Private Network) mein rehte ho jahan 100 ghar hain.
+
+- Bahar se koi bhi chithi (Data) aati hai toh us par **society ka main address** likha hota hai.  
+- Security guard ko pata hota hai ki kaun si chithi **kis flat (Private IP)** mein deni hai.[web:7]
+
+### 1. SNAT (Source NAT) – “Bahar Jaana”
+
+- **Analogy**:  
+  Tumne ghar se ek letter likha. Security guard dekh ke tumhara flat number mita deta hai aur **society ka official public address** likh deta hai taki bahar wale ko tumhare ghar ka asli internal pata na chale.  
+- **Technical**:  
+  - Ye **Source IP (Private)** ko change karke **Public IP** bana deta hai.  
+  - Mostly use hota hai jab internal users **internet access** karte hain.[web:7]
+
+### 2. DNAT (Destination NAT) – “Andar Aana”
+
+- **Analogy**:  
+  Bahar se koi courier wala aata hai:  
+  > “Ye parcel society ke liye hai.”  
+  Guard check karta hai:  
+  > “Achha, ye toh Flat 402 (Web Server) ke liye hai”  
+  aur parcel andar bhej deta hai.  
+- **Technical**:  
+  - Bahar se aane wale packets ka **Destination IP** change karke internal server ka IP daal diya jata hai.  
+  - Use case: Jab koi bahar se tumhare **home server / web server** ko access karta hai.[web:7]
+
+### 3. PAT (Port Address Translation) – “The Extension Number”
+
+Ye sabse important practical NAT form hai.
+
+- Ghar mein 5 log ek saath internet chala rahe hain, lekin **Public IP sirf ek** hai.[web:7]  
+- **Analogy**:  
+  Office ka ek hi main number hai, lekin receptionist ko pata hota hai:  
+  - Line 1 → Rahul  
+  - Line 2 → Priya  
+- **Technical**:  
+  - Router har internal device ke liye **different port number** assign karta hai.  
+  - Example:  
+    - Rahul: `1.2.3.4:1001`  
+    - Priya: `1.2.3.4:1002`  
+  - Is tarah ek hi public IP par hazaaron devices internet chala sakte hain.[web:7]
+
+### Quick NAT Comparison Table
+
+| Type | Kya badalta hai? | Direction (Traffic)  | Kab use hota hai?                        |
+|------|------------------|----------------------|-------------------------------------------|
+| SNAT | Source IP        | Bahar jaate waqt     | Jab aap Google/Internet access karte ho  |
+| DNAT | Destination IP   | Andar aate waqt      | Jab koi bahar se aapke home/web‑server ko access kare |
+| PAT  | IP + Port        | Mostly bahar jaate waqt | Jab ek hi public IP par multiple devices chal rahe ho |
+
+---
+
+## References / Further Study
+
+- Recursive vs Authoritative DNS:  
+  - https://www.nslookup.io/learning/recursive-vs-authoritative-dns/  
+  - https://www.digicert.com/faq/dns/recursive-and-authoritative-dns-differences  
+  - https://www.cloudflare.com/learning/dns/dns-server-types/  
+  - https://dmarcreport.com/blog/authoritative-vs-recursive-dns-understanding-the-key-differences/  
+  - https://www.dnsfilter.com/blog/authoritative-vs-recursive-dns  
+  - https://www.bigrock.in/blog/products/domains/recursive-vs-iterative-dns  
+
+- DHCP DORA:  
+  - https://www.geeksforgeeks.org/computer-networks/how-dora-works/  
+  - https://www.geeksforgeeks.org/computer-networks/dynamic-host-configuration-protocol-dhcp/  
+  - https://networklessons.com/ip-services/introduction-to-dhcp  
+  - https://www.linkedin.com/posts/abdelrahman-alshora_dhcp-dora-networking-activity-7387086187112579072-kTBE  
+
+- ARP & ARP Spoofing:  
+  - https://www.geeksforgeeks.org/ethical-hacking/what-is-arp-spoofing-attack/  
+  - https://www.imperva.com/learn/application-security/arp-spoofing/  
+  - https://www.sentinelone.com/cybersecurity-101/threat-intelligence/arp-spoofing/  
+
+- NAT / SNAT / DNAT / PAT:  
+  - https://www.thenetworkdna.com/2023/11/decoding-snat-and-dnat-unveiling.html  
+  - https://www.alibabacloud.com/blog/snat-vs--dnat-and-some-tips-for-the-acpace-cloud-computing-exam_598920  
+
+- Extra video:  
+  - https://www.youtube.com/watch?v=kS42C3vqFco  
+  - https://www.youtube.com/watch?v=opDGL3rupkY
